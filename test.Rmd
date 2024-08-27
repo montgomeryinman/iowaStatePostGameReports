@@ -19,16 +19,72 @@ library(gt)
 Pull Data:
 
 ```{r}
+team = "Iowa State"
+year = 2023
+week = 3
 
+#Getting pbp data
+pbp = cfbd_pbp_data(year = year, team = team, week = week, epa_wpa = F) %>%
+  filter(down > 0)
+
+#Getting gameid for the game
+gameid = pbp$game_id[1]
+
+#Getting advanced game log data
+advancedBox = cfbd_game_box_advanced(gameid, long = F) 
+
+#Getting game team stats
+teamStats = cfbd_game_team_stats(year = year, game_id = gameid)
 ```
 
-Make Win Probability Chart:
-
-```{r}
-
-```
 
 Make gt() table:
+
+```{r}
+homeTeamStats = teamStats %>% filter(home_away == "home")
+awayTeamStats = teamStats %>% filter(home_away == "away")
+
+homeAdvBox = advancedBox %>% filter(team == pbp$home[1])
+awayAdvBox = advancedBox %>% filter(team == pbp$away[1])
+
+pbp %>% filter(! play_type %in% c("Punt", "Timeout", "Penalty", "Field Goal Missed")) %>% group_by(offense_play) %>% summarise(n())
+
+unique(pbp$play_type)
+
+dfForGt = data.frame("Stat" = c("Team", 
+                                "Score",
+                                "EPA / Play",
+                                "Yards / Play",
+                                "Success Rate",
+                                "Poss Time",
+                                "EPA / Pass",
+                                "Yards / Pass",
+                                "Completion %",
+                                "Attemps",
+                                "Yards",
+                                "EPA / Rush",
+                                "Yards / Rush",
+                                "Stuff Rate",
+                                "Attempts",
+                                "Yards",
+                                "First Downs",
+                                "Third Down %"
+                                ),
+                     "Home" = c(pbp$home[1], 
+                                homeTeamStats$points,
+                                NA,
+                                ), 
+                     "Away" = c(pbp$away[1],
+                                awayTeamStats$points,
+                                NA,
+                                )
+                     )
+```
+
+
+
+
+Make Win Probability Chart:
 
 ```{r}
 
