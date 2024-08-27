@@ -109,7 +109,27 @@ dfForGt = data.frame(
 
 ```
 
+Calculate percentiles for color grading gt():
+```{r}
+combined_data_team_stats <- data.frame()
+weeksForPercentiles = c(1:15)
 
+for (weeks in weeksForPercentiles) {
+  temp = cfbd_game_team_stats(
+  year = 2023,
+  week = weeks,
+  season_type = "regular",
+  team = NULL,
+  conference = NULL,
+  game_id = NULL,
+  rows_per_team = 1
+  )
+  
+  combined_data_team_stats <- rbind(combined_data_team_stats, temp)
+}
+
+str(combined_data_team_stats)
+```
 
 
 Make Win Probability Chart:
