@@ -16,7 +16,36 @@ library(tidyverse)
 library(gt)
 ```
 
+Pull Data:
+
 ```{r}
 
 ```
+
+Make Win Probability Chart:
+
+```{r}
+
+```
+
+Make gt() table:
+
+```{r}
+
+```
+
+
+Combine:
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
 
