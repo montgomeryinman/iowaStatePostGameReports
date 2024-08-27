@@ -21,7 +21,7 @@ Pull Data:
 ```{r}
 team = "Iowa State"
 year = 2023
-week = 3
+week = 12
 
 #Getting pbp data
 pbp = cfbd_pbp_data(year = year, team = team, week = week, epa_wpa = F) %>%
@@ -35,6 +35,8 @@ advancedBox = cfbd_game_box_advanced(gameid, long = F)
 
 #Getting game team stats
 teamStats = cfbd_game_team_stats(year = year, game_id = gameid)
+teamStats = teamStats %>% separate_wider_delim(completion_attempts, delim = "-", names = c("completions", "attempts"))
+teamStats = teamStats %>% separate_wider_delim(third_down_eff, delim = "-", names = c("thirdDownCompleted", "thirdDownAttempts"))
 ```
 
 
@@ -47,38 +49,64 @@ awayTeamStats = teamStats %>% filter(home_away == "away")
 homeAdvBox = advancedBox %>% filter(team == pbp$home[1])
 awayAdvBox = advancedBox %>% filter(team == pbp$away[1])
 
-pbp %>% filter(! play_type %in% c("Punt", "Timeout", "Penalty", "Field Goal Missed")) %>% group_by(offense_play) %>% summarise(n())
+dfForGt = data.frame(
+  "Stat" = c("Team", 
+             "Score",
+             "EPA / Play",
+             "Yards / Play",
+             "Success Rate",
+             "Poss Time",
+             "EPA / Pass",
+             "Yards / Pass",
+             "Completion %",
+             "Attempts",
+             "Yards",
+             "EPA / Rush",
+             "Yards / Rush",
+             "Stuff Rate",
+             "Attempts",
+             "Yards",
+             "First Downs",
+             "Third Down %"
+  ),
+  "Home" = c(pbp$home[1], 
+             homeTeamStats$points,
+             NA,
+             as.numeric(homeTeamStats$total_yards) / homeAdvBox$ppa_plays, 
+             homeAdvBox$success_rates_overall_total,
+             homeTeamStats$possession_time,
+             NA,
+             homeTeamStats$yards_per_pass,
+             as.numeric(homeTeamStats$completions) / as.numeric(homeTeamStats$attempts),
+             homeTeamStats$attempts,
+             homeTeamStats$net_passing_yards,
+             NA,
+             homeTeamStats$yards_per_rush_attempt,
+             homeAdvBox$rushing_stuff_rate,
+             homeTeamStats$rushing_attempts,
+             homeTeamStats$rushing_yards,
+             homeTeamStats$first_downs,
+             as.numeric(homeTeamStats$thirdDownCompleted) / as.numeric(homeTeamStats$thirdDownAttempts)),
+  "Away" = c(pbp$away[1],
+             awayTeamStats$points,
+             NA,
+             as.numeric(awayTeamStats$total_yards) / awayAdvBox$ppa_plays,
+             awayAdvBox$success_rates_overall_total,
+             awayTeamStats$possession_time,
+             NA,
+             awayTeamStats$yards_per_pass,
+             as.numeric(awayTeamStats$completions) / as.numeric(awayTeamStats$attempts),
+             awayTeamStats$attempts,
+             awayTeamStats$net_passing_yards,
+             NA,
+             awayTeamStats$yards_per_rush_attempt,
+             awayAdvBox$rushing_stuff_rate,
+             awayTeamStats$rushing_attempts,
+             awayTeamStats$rushing_yards,
+             awayTeamStats$first_downs,
+             as.numeric(awayTeamStats$thirdDownCompleted) / as.numeric(awayTeamStats$thirdDownAttempts))
+)
 
-unique(pbp$play_type)
-
-dfForGt = data.frame("Stat" = c("Team", 
-                                "Score",
-                                "EPA / Play",
-                                "Yards / Play",
-                                "Success Rate",
-                                "Poss Time",
-                                "EPA / Pass",
-                                "Yards / Pass",
-                                "Completion %",
-                                "Attemps",
-                                "Yards",
-                                "EPA / Rush",
-                                "Yards / Rush",
-                                "Stuff Rate",
-                                "Attempts",
-                                "Yards",
-                                "First Downs",
-                                "Third Down %"
-                                ),
-                     "Home" = c(pbp$home[1], 
-                                homeTeamStats$points,
-                                NA,
-                                ), 
-                     "Away" = c(pbp$away[1],
-                                awayTeamStats$points,
-                                NA,
-                                )
-                     )
 ```
 
 
