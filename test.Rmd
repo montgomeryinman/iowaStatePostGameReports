@@ -200,10 +200,32 @@ pbp2023 = cfbd_pbp_data(year = year, epa_wpa = T) %>%
 
 #calculating percentiles for team stats
 
+
 #calculating percentiles for adv stats
 
+
 #calculating percentiles for pbp
+
 ```
+
+```{r}
+str(dfForGt)
+
+
+dfForGt %>%
+  gt() %>%
+  data_color(
+    columns = vars(Home),
+    rows = Stat == "EPA / Play",
+    colors = scales::col_quantile(
+      palette = "Blues",
+      domain = combined_data_adv_stats$ppa_overall_total,
+      na.color = "#FFFFFF00"
+    )
+  )
+
+```
+
 
 
 Make Win Probability Chart:
