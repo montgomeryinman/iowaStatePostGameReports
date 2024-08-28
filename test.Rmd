@@ -146,6 +146,7 @@ dfForGt = data.frame(
 
 Calculate percentiles for color grading gt():
 ```{r}
+#Getting data for team stats 
 combined_data_team_stats <- data.frame()
 weeksForPercentiles = c(1:15)
 
@@ -165,7 +166,43 @@ for (weeks in weeksForPercentiles) {
 
 combined_data_team_stats[78] = sapply(combined_data_team_stats[78], as.numeric)
 combined_data_team_stats = as.data.frame(combined_data_team_stats)
-str(combined_data_team_stats)
+
+#Getting data for adv stats
+combined_data_adv_stats <- data.frame()
+weeksForPercentiles = c(1:15)
+
+for (weeks in weeksForPercentiles) {
+  temp = cfbd_game_info(
+    year = year,
+    week = weeks,
+    season_type = "regular",
+    division = "fbs",
+  )
+  
+  weekData = rbind(weekData, temp)
+  
+  gameIds = weekData$game_id
+}
+
+for (game in gameIds) {
+  temp = cfbd_game_box_advanced(
+    game_id = game,
+  )
+  
+  combined_data_adv_stats <- rbind(combined_data_adv_stats, temp)
+}
+
+
+#Getting play by play data
+pbp2023 = cfbd_pbp_data(year = year, epa_wpa = T) %>%
+  filter(down > 0,
+         !str_detect(play_text, "Kneel"))
+
+#calculating percentiles for team stats
+
+#calculating percentiles for adv stats
+
+#calculating percentiles for pbp
 ```
 
 
