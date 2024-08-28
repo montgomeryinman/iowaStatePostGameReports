@@ -24,31 +24,66 @@ year = 2023
 week = 12
 
 #Getting pbp data
-pbp = cfbd_pbp_data(year = year, team = team, week = week, epa_wpa = F) %>%
-  filter(down > 0)
+pbpForEpa = cfbd_pbp_data(year = year, team = team, week = week, epa_wpa = T) %>%
+  filter(down > 0,
+         !str_detect(play_text, "Kneel"))
 
 #Getting gameid for the game
-gameid = pbp$game_id[1]
+gameid = pbpForEpa$game_id[1]
 
 #Getting advanced game log data
 advancedBox = cfbd_game_box_advanced(gameid, long = F) 
 
 #Getting game team stats
 teamStats = cfbd_game_team_stats(year = year, game_id = gameid)
-teamStats = teamStats %>% separate_wider_delim(completion_attempts, delim = "-", names = c("completions", "attempts"))
-teamStats = teamStats %>% separate_wider_delim(third_down_eff, delim = "-", names = c("thirdDownCompleted", "thirdDownAttempts"))
-```
 
+teamStats = teamStats %>% separate_wider_delim(completion_attempts, delim = "-", names = c("completions", "attempts"))
+
+teamStats = teamStats %>% separate_wider_delim(third_down_eff, delim = "-", names = c("thirdDownCompleted", "thirdDownAttempts"))
+
+
+```
 
 Make gt() table:
 
 ```{r}
+#Seperating the team stats df with home and away
 homeTeamStats = teamStats %>% filter(home_away == "home")
 awayTeamStats = teamStats %>% filter(home_away == "away")
 
+#Seperating the advanced box df with home and away
 homeAdvBox = advancedBox %>% filter(team == pbp$home[1])
 awayAdvBox = advancedBox %>% filter(team == pbp$away[1])
 
+#Calculating EPA things
+homePBP = pbpForEpa %>%
+  filter(pos_team == pbpForEpa$home[1])
+
+awayPBP = pbpForEpa %>%
+  filter(pos_team == pbpForEpa$away[1])
+
+homePBPpass = homePBP %>%
+  filter(pass == 1)
+
+awayPBPpass = awayPBP %>%
+  filter(pass == 1)
+
+homePBPrush = homePBP %>%
+  filter(rush == 1)
+
+awayPBPrush = awayPBP %>%
+  filter(rush == 1)
+
+homeEPAperPlay = sum(homePBP$EPA, na.rm = T) / nrow(homePBP)
+awayEPAperPlay = sum(awayPBP$EPA, na.rm = T) / nrow(awayPBP)
+
+homeEPAperPass = sum(homePBPpass$EPA, na.rm = T) / nrow(homePBPpass)
+awayEPAperPass = sum(awayPBPpass$EPA, na.rm = T) / nrow(awayPBPpass)
+
+homeEPAperRush = sum(homePBPrush$EPA, na.rm = T) / nrow(homePBPrush)
+awayEPAperRush = sum(awayPBPrush$EPA, na.rm = T) / nrow(awayPBPrush)
+
+#Creating the data frame for the gt table
 dfForGt = data.frame(
   "Stat" = c("Team", 
              "Score",
@@ -57,7 +92,7 @@ dfForGt = data.frame(
              "Success Rate",
              "Poss Time",
              "EPA / Pass",
-             "Yards / Pass",
+             "Yards / Completion",
              "Completion %",
              "Attempts",
              "Yards",
@@ -69,36 +104,36 @@ dfForGt = data.frame(
              "First Downs",
              "Third Down %"
   ),
-  "Home" = c(pbp$home[1], 
+  "Home" = c(pbpForEpa$home[1], 
              homeTeamStats$points,
-             NA,
+             homeEPAperPlay,
              as.numeric(homeTeamStats$total_yards) / homeAdvBox$ppa_plays, 
              homeAdvBox$success_rates_overall_total,
              homeTeamStats$possession_time,
-             NA,
-             homeTeamStats$yards_per_pass,
+             homeEPAperPass,
+             as.numeric(homeTeamStats$net_passing_yards) / as.numeric(homeTeamStats$completions),
              as.numeric(homeTeamStats$completions) / as.numeric(homeTeamStats$attempts),
              homeTeamStats$attempts,
              homeTeamStats$net_passing_yards,
-             NA,
+             homeEPAperRush,
              homeTeamStats$yards_per_rush_attempt,
              homeAdvBox$rushing_stuff_rate,
              homeTeamStats$rushing_attempts,
              homeTeamStats$rushing_yards,
              homeTeamStats$first_downs,
              as.numeric(homeTeamStats$thirdDownCompleted) / as.numeric(homeTeamStats$thirdDownAttempts)),
-  "Away" = c(pbp$away[1],
+  "Away" = c(pbpForEpa$away[1],
              awayTeamStats$points,
-             NA,
+             awayEPAperPlay,
              as.numeric(awayTeamStats$total_yards) / awayAdvBox$ppa_plays,
              awayAdvBox$success_rates_overall_total,
              awayTeamStats$possession_time,
-             NA,
-             awayTeamStats$yards_per_pass,
+             awayEPAperPass,
+             as.numeric(awayTeamStats$net_passing_yards) / as.numeric(awayTeamStats$completions),
              as.numeric(awayTeamStats$completions) / as.numeric(awayTeamStats$attempts),
              awayTeamStats$attempts,
              awayTeamStats$net_passing_yards,
-             NA,
+             awayEPAperRush,
              awayTeamStats$yards_per_rush_attempt,
              awayAdvBox$rushing_stuff_rate,
              awayTeamStats$rushing_attempts,
@@ -128,6 +163,8 @@ for (weeks in weeksForPercentiles) {
   combined_data_team_stats <- rbind(combined_data_team_stats, temp)
 }
 
+combined_data_team_stats[78] = sapply(combined_data_team_stats[78], as.numeric)
+combined_data_team_stats = as.data.frame(combined_data_team_stats)
 str(combined_data_team_stats)
 ```
 
