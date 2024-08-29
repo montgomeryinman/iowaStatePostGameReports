@@ -85,8 +85,7 @@ awayEPAperRush = sum(awayPBPrush$EPA, na.rm = T) / nrow(awayPBPrush)
 
 #Creating the data frame for the gt table
 dfForGt = data.frame(
-  "Stat" = c("Team", 
-             "Score",
+  "Stat" = c("Score",
              "EPA / Play",
              "Yards / Play",
              "Success Rate",
@@ -104,8 +103,7 @@ dfForGt = data.frame(
              "First Downs",
              "Third Down %"
   ),
-  "Home" = c(pbpForEpa$home[1], 
-             homeTeamStats$points,
+  home = c(homeTeamStats$points,
              homeEPAperPlay,
              as.numeric(homeTeamStats$total_yards) / homeAdvBox$ppa_plays, 
              homeAdvBox$success_rates_overall_total,
@@ -122,8 +120,7 @@ dfForGt = data.frame(
              homeTeamStats$rushing_yards,
              homeTeamStats$first_downs,
              as.numeric(homeTeamStats$thirdDownCompleted) / as.numeric(homeTeamStats$thirdDownAttempts)),
-  "Away" = c(pbpForEpa$away[1],
-             awayTeamStats$points,
+  away = c(awayTeamStats$points,
              awayEPAperPlay,
              as.numeric(awayTeamStats$total_yards) / awayAdvBox$ppa_plays,
              awayAdvBox$success_rates_overall_total,
@@ -141,6 +138,13 @@ dfForGt = data.frame(
              awayTeamStats$first_downs,
              as.numeric(awayTeamStats$thirdDownCompleted) / as.numeric(awayTeamStats$thirdDownAttempts))
 )
+
+colnames(dfForGt)[2] <- pbpForEpa$home[1]
+colnames(dfForGt)[3] <- pbpForEpa$away[1]
+
+dfForGt[,2] = as.numeric(dfForGt[,2])
+dfForGt[,3] = as.numeric(dfForGt[,3])
+str(dfForGt)
 
 ```
 
@@ -209,16 +213,13 @@ pbp2023 = cfbd_pbp_data(year = year, epa_wpa = T) %>%
 ```
 
 ```{r}
-str(dfForGt)
-
-
 dfForGt %>%
   gt() %>%
   data_color(
-    columns = vars(Home),
+    columns = c(2,3),
     rows = Stat == "EPA / Play",
     colors = scales::col_quantile(
-      palette = "Blues",
+      palette = "Reds",
       domain = combined_data_adv_stats$ppa_overall_total,
       na.color = "#FFFFFF00"
     )
