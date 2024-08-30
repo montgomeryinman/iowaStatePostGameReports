@@ -1,32 +1,18 @@
----
-title: "test"
-author: "Montgomery Inman"
-date: "2024-08-27"
-output: html_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 ```{r}
 library(cfbfastR)
 library(cfbplotR)
 library(tidyverse)
 library(gt)
 ```
-
-Pull Data:
-
-```{r}
-team = "Iowa State"
-year = 2023
-week = 12
+team = "Colorado"
+year = 2024
+week = 1
 
 #Getting pbp data
 pbpForEpa = cfbd_pbp_data(year = year, team = team, week = week, epa_wpa = T) %>%
   filter(down > 0,
-         !str_detect(play_text, "Kneel"))
+         !str_detect(play_text, "Kneel"),
+         (rush == 1 | pass == 1))
 
 #Getting gameid for the game
 gameid = pbpForEpa$game_id[1]
@@ -42,18 +28,13 @@ teamStats = teamStats %>% separate_wider_delim(completion_attempts, delim = "-",
 teamStats = teamStats %>% separate_wider_delim(third_down_eff, delim = "-", names = c("thirdDownCompleted", "thirdDownAttempts"))
 
 
-```
-
-Make gt() table:
-
-```{r}
 #Seperating the team stats df with home and away
 homeTeamStats = teamStats %>% filter(home_away == "home")
 awayTeamStats = teamStats %>% filter(home_away == "away")
 
 #Seperating the advanced box df with home and away
-homeAdvBox = advancedBox %>% filter(team == pbp$home[1])
-awayAdvBox = advancedBox %>% filter(team == pbp$away[1])
+homeAdvBox = advancedBox %>% filter(team == pbpForEpa$home[1])
+awayAdvBox = advancedBox %>% filter(team == pbpForEpa$away[1])
 
 #Calculating EPA things
 homePBP = pbpForEpa %>%
@@ -86,7 +67,7 @@ awayEPAperRush = sum(awayPBPrush$EPA, na.rm = T) / nrow(awayPBPrush)
 #Creating the data frame for the gt table
 dfForGt = data.frame(
   "Stat" = c("Score",
-              "EPA / Play",
+             "EPA / Play",
              "Yards / Play",
              "Success Rate",
              "EPA / Pass",
@@ -103,34 +84,34 @@ dfForGt = data.frame(
   ),
   home = c(homeTeamStats$points,
            homeEPAperPlay,
-             as.numeric(homeTeamStats$total_yards) / homeAdvBox$ppa_plays, 
-             homeAdvBox$success_rates_overall_total,
-             homeEPAperPass,
-             as.numeric(homeTeamStats$net_passing_yards) / as.numeric(homeTeamStats$completions),
-             as.numeric(homeTeamStats$completions) / as.numeric(homeTeamStats$attempts),
-             homeTeamStats$attempts,
-             homeTeamStats$net_passing_yards,
-             homeEPAperRush,
-             homeTeamStats$yards_per_rush_attempt,
-             homeAdvBox$rushing_stuff_rate,
-             homeTeamStats$rushing_attempts,
-             homeTeamStats$rushing_yards,
-             as.numeric(homeTeamStats$thirdDownCompleted) / as.numeric(homeTeamStats$thirdDownAttempts)),
+           as.numeric(homeTeamStats$total_yards) / homeAdvBox$ppa_plays, 
+           homeAdvBox$success_rates_overall_total,
+           homeEPAperPass,
+           as.numeric(homeTeamStats$net_passing_yards) / as.numeric(homeTeamStats$completions),
+           as.numeric(homeTeamStats$completions) / as.numeric(homeTeamStats$attempts),
+           homeTeamStats$attempts,
+           homeTeamStats$net_passing_yards,
+           homeEPAperRush,
+           homeTeamStats$yards_per_rush_attempt,
+           homeAdvBox$rushing_stuff_rate,
+           homeTeamStats$rushing_attempts,
+           homeTeamStats$rushing_yards,
+           as.numeric(homeTeamStats$thirdDownCompleted) / as.numeric(homeTeamStats$thirdDownAttempts)),
   away = c(awayTeamStats$points,
            awayEPAperPlay,
-             as.numeric(awayTeamStats$total_yards) / awayAdvBox$ppa_plays,
-             awayAdvBox$success_rates_overall_total,
-             awayEPAperPass,
-             as.numeric(awayTeamStats$net_passing_yards) / as.numeric(awayTeamStats$completions),
-             as.numeric(awayTeamStats$completions) / as.numeric(awayTeamStats$attempts),
-             awayTeamStats$attempts,
-             awayTeamStats$net_passing_yards,
-             awayEPAperRush,
-             awayTeamStats$yards_per_rush_attempt,
-             awayAdvBox$rushing_stuff_rate,
-             awayTeamStats$rushing_attempts,
-             awayTeamStats$rushing_yards,
-             as.numeric(awayTeamStats$thirdDownCompleted) / as.numeric(awayTeamStats$thirdDownAttempts))
+           as.numeric(awayTeamStats$total_yards) / awayAdvBox$ppa_plays,
+           awayAdvBox$success_rates_overall_total,
+           awayEPAperPass,
+           as.numeric(awayTeamStats$net_passing_yards) / as.numeric(awayTeamStats$completions),
+           as.numeric(awayTeamStats$completions) / as.numeric(awayTeamStats$attempts),
+           awayTeamStats$attempts,
+           awayTeamStats$net_passing_yards,
+           awayEPAperRush,
+           awayTeamStats$yards_per_rush_attempt,
+           awayAdvBox$rushing_stuff_rate,
+           awayTeamStats$rushing_attempts,
+           awayTeamStats$rushing_yards,
+           as.numeric(awayTeamStats$thirdDownCompleted) / as.numeric(awayTeamStats$thirdDownAttempts))
 )
 
 colnames(dfForGt)[2] <- pbpForEpa$home[1]
@@ -138,23 +119,23 @@ colnames(dfForGt)[3] <- pbpForEpa$away[1]
 
 dfForGt[,2] = as.numeric(dfForGt[,2])
 dfForGt[,3] = as.numeric(dfForGt[,3])
-```
 
-Calculate percentiles for color grading gt():
-```{r}
+
+
+
 #Getting data for team stats 
 combined_data_team_stats <- data.frame()
 weeksForPercentiles = c(1:15)
 
 for (weeks in weeksForPercentiles) {
   temp = cfbd_game_team_stats(
-  year = 2023,
-  week = weeks,
-  season_type = "regular",
-  team = NULL,
-  conference = NULL,
-  game_id = NULL,
-  rows_per_team = 1
+    year = 2023,
+    week = weeks,
+    season_type = "regular",
+    team = NULL,
+    conference = NULL,
+    game_id = NULL,
+    rows_per_team = 1
   )
   
   combined_data_team_stats <- rbind(combined_data_team_stats, temp)
@@ -195,13 +176,11 @@ combined_data_adv_stats <- do.call(rbind, lapply(gameIds, function(game) {
 
 
 
- #Getting play by play data
+#Getting play by play data
 pbp2023 = cfbd_pbp_data(year = year, epa_wpa = T) %>%
   filter(down > 0,
          !str_detect(play_text, "Kneel"))
-```
 
-```{r}
 dfForGt %>%
   gt() %>%
   cols_move(
@@ -209,13 +188,13 @@ dfForGt %>%
     after = 2
   ) %>% 
   cols_align(
-  align = "center",
-  columns = everything()
-) %>% 
+    align = "center",
+    columns = everything()
+  ) %>% 
   opt_table_font(
-  font = "Coolvetica",
-) %>%
-  tab_row_group("Efficiency", c(2:4, 16)) %>%
+    font = "Coolvetica",
+  ) %>%
+  tab_row_group("Efficiency", c(2:4, 15)) %>%
   tab_row_group("Passing", c(5:9)) %>%
   tab_row_group("Rushing", c(10:14)) %>%
   row_group_order(groups = c(NA, "Efficiency", "Passing", "Rushing")) %>%
@@ -234,29 +213,3 @@ dfForGt %>%
       na.color = "#FFFFFF00"
     )
   )
-
-```
-
-
-
-Make Win Probability Chart:
-
-```{r}
-
-```
-
-
-Combine:
-
-```{r}
-
-```
-
-
-
-
-
-
-
-
-
