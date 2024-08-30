@@ -5,8 +5,231 @@ date: "2024-08-27"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r}
+library(cfbfastR)
+library(cfbplotR)
+library(tidyverse)
+library(gt)
 ```
+
+Pull Data:
+
+```{r}
+team = "Iowa State"
+year = 2023
+week = 12
+
+#Getting PBP data
+pbpForEpa = cfbd_pbp_data(year = year, team = team, week = week, epa_wpa = T) %>%
+  filter(down > 0,
+         (rush == 1 | pass == 1),
+         !str_detect(play_text, "Kneel"))
+
+#Getting gameid for the GAME
+gameid = pbpForEpa$game_id[1]
+
+#Getting advanced game log data for the GAME
+advancedBox = cfbd_game_box_advanced(gameid, long = F) 
+
+#Getting team stats for the GAME
+teamStats = cfbd_game_team_stats(year = year, game_id = gameid)
+
+#Separating teamStats completions and attempts
+teamStats = teamStats %>% separate_wider_delim(completion_attempts, delim = "-", names = c("completions", "attempts"))
+
+#Separating teamStats third down efficiency attempts
+teamStats = teamStats %>% separate_wider_delim(third_down_eff, delim = "-", names = c("thirdDownCompleted", "thirdDownAttempts"))
+```
+
+pbpForEpa: gameid, home & away teams
+advancedBox: 
+teamStats: points
+
+
+```{r}
+#Seperating the team stats df with home and away
+homeTeamStats = teamStats %>% filter(home_away == "home")
+awayTeamStats = teamStats %>% filter(home_away == "away")
+
+#Seperating the advanced box df with home and away
+homeAdvBox = advancedBox %>% filter(team == pbp$home[1])
+awayAdvBox = advancedBox %>% filter(team == pbp$away[1])
+
+#Seperating the pbpForEpa df with home and away
+homePBP = pbpForEpa %>%
+  filter(pos_team == pbpForEpa$home[1])
+awayPBP = pbpForEpa %>%
+  filter(pos_team == pbpForEpa$away[1])
+
+#Creating home Pbp for passes
+homePBPpass = homePBP %>%
+  filter(pass == 1)
+
+#Creating away Pbp for passes
+awayPBPpass = awayPBP %>%
+  filter(pass == 1)
+
+#Creating home Pbp for rushes
+homePBPrush = homePBP %>%
+  filter(rush == 1)
+
+#Creating away Pbp for rushes
+awayPBPrush = awayPBP %>%
+  filter(rush == 1)
+
+#Calculating EPA per PLAY for home & away
+homeEPAperPlay = sum(homePBP$EPA, na.rm = T) / nrow(homePBP)
+awayEPAperPlay = sum(awayPBP$EPA, na.rm = T) / nrow(awayPBP)
+
+#Calculating EPA per PASS for home & away
+homeEPAperPass = sum(homePBPpass$EPA, na.rm = T) / nrow(homePBPpass)
+awayEPAperPass = sum(awayPBPpass$EPA, na.rm = T) / nrow(awayPBPpass)
+
+#Calculating EPA per RUSH for home & away
+homeEPAperRush = sum(homePBPrush$EPA, na.rm = T) / nrow(homePBPrush)
+awayEPAperRush = sum(awayPBPrush$EPA, na.rm = T) / nrow(awayPBPrush)
+```
+
+
+```{r}
+#Creating the data frame for the gt table
+dfForGt = data.frame(
+  "Stat" = c("Score",
+              "EPA / Play",
+             "Yards / Play",
+             "Success Rate",
+             "EPA / Pass",
+             "Yards / Completion",
+             "Completion %",
+             "Attempts",
+             "Yards",
+             "EPA / Rush",
+             "Yards / Rush",
+             "Stuff Rate",
+             "Attempts",
+             "Yards",
+             "Third Down %"
+  ),
+  home = c(homeTeamStats$points,
+           homeEPAperPlay,
+             as.numeric(homeTeamStats$total_yards) / homeAdvBox$ppa_plays, 
+             homeAdvBox$success_rates_overall_total,
+             homeEPAperPass,
+             as.numeric(homeTeamStats$net_passing_yards) / as.numeric(homeTeamStats$completions),
+             as.numeric(homeTeamStats$completions) / as.numeric(homeTeamStats$attempts),
+             homeTeamStats$attempts,
+             homeTeamStats$net_passing_yards,
+             homeEPAperRush,
+             homeTeamStats$yards_per_rush_attempt,
+             homeAdvBox$rushing_stuff_rate,
+             homeTeamStats$rushing_attempts,
+             homeTeamStats$rushing_yards,
+             as.numeric(homeTeamStats$thirdDownCompleted) / as.numeric(homeTeamStats$thirdDownAttempts)),
+  away = c(awayTeamStats$points,
+           awayEPAperPlay,
+             as.numeric(awayTeamStats$total_yards) / awayAdvBox$ppa_plays,
+             awayAdvBox$success_rates_overall_total,
+             awayEPAperPass,
+             as.numeric(awayTeamStats$net_passing_yards) / as.numeric(awayTeamStats$completions),
+             as.numeric(awayTeamStats$completions) / as.numeric(awayTeamStats$attempts),
+             awayTeamStats$attempts,
+             awayTeamStats$net_passing_yards,
+             awayEPAperRush,
+             awayTeamStats$yards_per_rush_attempt,
+             awayAdvBox$rushing_stuff_rate,
+             awayTeamStats$rushing_attempts,
+             awayTeamStats$rushing_yards,
+             as.numeric(awayTeamStats$thirdDownCompleted) / as.numeric(awayTeamStats$thirdDownAttempts))
+)
+
+#Replacing the columns with the home and away teams
+colnames(dfForGt)[2] <- pbpForEpa$home[1]
+colnames(dfForGt)[3] <- pbpForEpa$away[1]
+
+#Setting each column to be numeric 
+dfForGt[,2] = as.numeric(dfForGt[,2])
+dfForGt[,3] = as.numeric(dfForGt[,3])
+```
+
+
+```{r}
+#Getting data for ALL team stats for 2023 season
+combined_data_team_stats <- data.frame()
+weeksForPercentiles = c(1:15)
+
+for (weeks in weeksForPercentiles) {
+  temp = cfbd_game_team_stats(
+  year = 2023,
+  week = weeks,
+  season_type = "regular",
+  team = NULL,
+  conference = NULL,
+  game_id = NULL,
+  rows_per_team = 1
+  )
+  
+  combined_data_team_stats <- rbind(combined_data_team_stats, temp)
+}
+
+#Making combined_data_team_stats into a data frame 
+combined_data_team_stats = as.data.frame(combined_data_team_stats)
+
+#Getting data for ALL adv stats for 2023 season
+combined_data_adv_stats <- data.frame()
+weeksForPercentiles = c(1:15)
+weekData = data.frame()
+
+#Have to get ALL the game ids 
+for (weeks in weeksForPercentiles) {
+  temp = cfbd_game_info(
+    year = year,
+    week = weeks,
+    season_type = "regular",
+    division = "fbs",
+  )
+  
+  weekData = rbind(weekData, temp)
+  
+  gameIds = weekData$game_id
+}
+
+#for all the gameids, get ALL the advanced stats for the 2023 season
+combined_data_adv_stats <- do.call(rbind, lapply(gameIds, function(game) {
+  cfbd_game_box_advanced(game_id = game)
+}))
+
+#Getting ALL play by play data for the 2023 season
+pbp2023 = cfbd_pbp_data(year = year, epa_wpa = T) %>%
+  filter(down > 0,
+         !str_detect(play_text, "Kneel"),
+         (rush == 1 | pass == 1))
+```
+
+```{r}
+#EFFICIENCY
+#"EPA / Play", pbp2023
+#"Yards / Play", 
+#"Success Rate",
+#"Third Down %"
+
+#PASSING
+#"EPA / Pass",
+#"Yards / Completion",
+#"Completion %",
+#"Attempts",
+#"Yards",
+
+#RUSHING
+#"EPA / Rush",
+#"Yards / Rush", combined_data_team_stats
+#"Stuff Rate", combined_data_adv_stats
+#"Attempts",
+#"Yards",
+
+```
+
+
+
+
 
 

@@ -1,9 +1,9 @@
-```{r}
+
 library(cfbfastR)
 library(cfbplotR)
 library(tidyverse)
 library(gt)
-```
+
 team = "Colorado"
 year = 2024
 week = 1
@@ -181,6 +181,8 @@ pbp2023 = cfbd_pbp_data(year = year, epa_wpa = T) %>%
   filter(down > 0,
          !str_detect(play_text, "Kneel"))
 
+
+
 dfForGt %>%
   gt() %>%
   cols_move(
@@ -207,6 +209,15 @@ dfForGt %>%
   data_color(
     columns = c(2,3),
     rows = Stat == "EPA / Play",
+    colors = scales::col_quantile(
+      palette = "Greens",
+      domain = combined_data_adv_stats$ppa_overall_total,
+      na.color = "#FFFFFF00"
+    )
+  ) %>%
+  data_color(
+    columns = c(2,3),
+    rows = Stat == "Yards / Play",
     colors = scales::col_quantile(
       palette = "Greens",
       domain = combined_data_adv_stats$ppa_overall_total,

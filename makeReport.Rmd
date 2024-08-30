@@ -9,22 +9,85 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+```{r}
+#Creating the gt table
+epaPerPlayDF = pbp2023 %>% group_by(game_id, pos_team) %>%
+  summarise(epa = sum(EPA),
+            plays = n(),
+            epaPerPlay = epa / plays) %>%
+  arrange(desc(epaPerPlay))
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+dfForGt %>%
+  gt() %>%
+  cols_move(
+    columns = 1,
+    after = 2
+  ) %>% 
+  cols_align(
+  align = "center",
+  columns = everything()
+) %>% 
+  opt_table_font(
+  font = "Coolvetica",
+) %>%
+  tab_row_group("Efficiency", c(2:4, 15)) %>%
+  tab_row_group("Passing", c(5:9)) %>%
+  tab_row_group("Rushing", c(10:14)) %>%
+  row_group_order(groups = c(NA, "Efficiency", "Passing", "Rushing")) %>%
+  tab_style(
+    style = list(
+      cell_text(align = "center")  # Align text to the center
+    ),
+    locations = cells_row_groups()
+  ) %>%
+  data_color(
+    columns = c(2,3),
+    rows = Stat == "Yards / Rush",
+    colors = scales::col_quantile(
+      palette = "RdYlGn",
+      domain = combined_data_team_stats$yards_per_rush_attempt,
+      na.color = "#FFFFFF00"
+    )
+  ) %>%
+  data_color(
+    columns = c(2,3),
+    rows = Stat == "Stuff Rate",
+    colors = scales::col_quantile(
+      palette = "RdYlGn",
+      domain = combined_data_adv_stats$rushing_stuff_rate,
+      na.color = "#FFFFFF00",
+      reverse = T
+    )
+  ) %>%
+  data_color(
+    columns = c(2,3),
+    rows = Stat == "EPA / Play",
+    colors = scales::col_bin(
+      palette = "RdYlGn", 
+      domain = epaPerPlayDF$epaPerPlay,
+      na.color = "#FFFFFF00",
+    )
+  )
 
-```{r cars}
-summary(cars)
+hist(combined_data_team_stats$yards_per_rush_attempt)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+Make Win Probability Chart:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+Combine:
+
+```{r}
+
+```
+
+
+
+
+
