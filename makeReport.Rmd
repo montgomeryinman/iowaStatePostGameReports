@@ -10,14 +10,42 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-#Creating the gt table
+#Creating the stats for the color codings in the gt table
+
 epaPerPlayDF = pbp2023 %>% group_by(game_id, pos_team) %>%
   summarise(epa = sum(EPA),
             plays = n(),
             epaPerPlay = epa / plays) %>%
   arrange(desc(epaPerPlay))
 
+epaPerPassDF = pbp2023 %>% filter(pass == 1) %>%
+  group_by(game_id, pos_team) %>%
+  summarise(epa = sum(EPA),
+            plays = n(),
+            yardsGained = sum(yards_gained),
+            epaPerPass = epa / plays,
+            yardsPerCompletion = (yardsGained / plays)) %>%
+  arrange(desc(yardsPerCompletion)) %>%
+  filter(plays > 9)
 
+epaPerRushDF = pbp2023 %>% filter(rush == 1) %>%
+  group_by(game_id, pos_team) %>%
+  summarise(epa = sum(EPA),
+            plays = n(),
+            epaPerRush = epa / plays) %>%
+  arrange(desc(epaPerRush)) %>%
+  filter(plays > 9)
+
+
+yardsPerPlayDF = pbp2023 %>% group_by(game_id, pos_team) %>%
+  summarise(total_yards_gained = sum(yards_gained),
+            plays = n(),
+            yardsPerPlay = total_yards_gained / plays) %>%
+  arrange(desc(yardsPerPlay))
+```
+
+```{r}
+#Creating the gt table
 dfForGt %>%
   gt() %>%
   cols_move(
@@ -68,9 +96,74 @@ dfForGt %>%
       domain = epaPerPlayDF$epaPerPlay,
       na.color = "#FFFFFF00",
     )
+  ) %>% 
+  data_color(
+    columns = c(2,3),
+    rows = Stat == "EPA / Pass",
+    colors = scales::col_bin(
+      palette = "RdYlGn", 
+      domain = epaPerPassDF$epaPerPass,
+      na.color = "#FFFFFF00",
+    )
+  ) %>% 
+  data_color(
+    columns = c(2,3),
+    rows = Stat == "EPA / Rush",
+    colors = scales::col_bin(
+      palette = "RdYlGn", 
+      domain = epaPerRushDF$epaPerRush,
+      na.color = "#FFFFFF00",
+    )
+  ) %>% 
+  data_color(
+    columns = c(2,3),
+    rows = Stat == "Yards / Play",
+    colors = scales::col_bin(
+      palette = "RdYlGn", 
+      domain = yardsPerPlayDF$yardsPerPlay,
+      na.color = "#FFFFFF00",
+    )
+  ) %>% 
+  data_color(
+    columns = c(2,3),
+    rows = Stat == "Success Rate",
+    colors = scales::col_bin(
+      palette = "RdYlGn", 
+      domain = combined_data_adv_stats$success_rates_overall_total,
+      na.color = "#FFFFFF00",
+    )
+  ) %>% 
+  data_color(
+    columns = c(2,3),
+    rows = Stat == "Yards / Completion",
+    colors = scales::col_bin(
+      palette = "RdYlGn", 
+      domain = epaPerPassDF$yardsPerCompletion,
+      na.color = "#FFFFFF00",
+    )
+  ) %>%
+  cols_label(
+    Stat = html("")
+  ) %>% text_replace(
+    pattern = "Score",
+    replacement = "Final Score"
+  ) %>% 
+   fmt_number(
+    rows = c(1, 8, 9, 13, 14),
+    decimals = 0 
+  ) %>%
+   fmt_number(
+    rows = c(2, 5, 10),
+    decimals = 3
+  ) %>%
+   fmt_number(
+    rows = c(3, 6, 11),
+    decimals = 2
+  ) %>%
+   fmt_percent(
+    rows =  c(4, 7, 12, 15),
+    decimals = 1
   )
-
-hist(combined_data_team_stats$yards_per_rush_attempt)
 ```
 
 

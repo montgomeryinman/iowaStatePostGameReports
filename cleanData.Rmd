@@ -10,14 +10,15 @@ library(cfbfastR)
 library(cfbplotR)
 library(tidyverse)
 library(gt)
+library(gtExtras)
 ```
 
 Pull Data:
 
 ```{r}
 team = "Iowa State"
-year = 2023
-week = 12
+year = 2024
+week = 1
 
 #Getting PBP data
 pbpForEpa = cfbd_pbp_data(year = year, team = team, week = week, epa_wpa = T) %>%
@@ -52,8 +53,8 @@ homeTeamStats = teamStats %>% filter(home_away == "home")
 awayTeamStats = teamStats %>% filter(home_away == "away")
 
 #Seperating the advanced box df with home and away
-homeAdvBox = advancedBox %>% filter(team == pbp$home[1])
-awayAdvBox = advancedBox %>% filter(team == pbp$away[1])
+homeAdvBox = advancedBox %>% filter(team == pbpForEpa$home[1])
+awayAdvBox = advancedBox %>% filter(team == pbpForEpa$away[1])
 
 #Seperating the pbpForEpa df with home and away
 homePBP = pbpForEpa %>%
@@ -95,7 +96,7 @@ awayEPAperRush = sum(awayPBPrush$EPA, na.rm = T) / nrow(awayPBPrush)
 #Creating the data frame for the gt table
 dfForGt = data.frame(
   "Stat" = c("Score",
-              "EPA / Play",
+             "EPA / Play",
              "Yards / Play",
              "Success Rate",
              "EPA / Pass",
@@ -204,6 +205,16 @@ pbp2023 = cfbd_pbp_data(year = year, epa_wpa = T) %>%
          !str_detect(play_text, "Kneel"),
          (rush == 1 | pass == 1))
 ```
+
+```{r}
+combined_data_team_stats = combined_data_team_stats %>% separate_wider_delim(completion_attempts, delim = "-", names = c("completions", "attempts")) 
+
+combined_data_team_stats = combined_data_team_stats %>% separate_wider_delim(third_down_eff, delim = "-", names = c("thirdDownCompleted", "thirdDownAttempts"))
+
+combined_data_team_stats$completionPercent = as.numeric(combined_data_team_stats$completions) / as.numeric(combined_data_team_stats$attempts)
+```
+
+
 
 ```{r}
 #EFFICIENCY
